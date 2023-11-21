@@ -1,0 +1,78 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Lottery {
+    // Address of the contract owner
+    address public owner;
+
+    // Mapping to store the balances of participants
+    mapping(address => uint) public balances;
+
+    // List of participants
+    address[] public participants;
+
+    // Flag to indicate if the lottery has ended
+    bool public lotteryEnded;
+
+    // Event emitted when the lottery winner is selected
+    event LotteryWinner(address indexed _winner, uint _payout);
+
+    // Modifier to ensure that only the owner can call certain functions
+    modifier onlyOwner() {
+        require(msg.sender == owner, "You are not the owner");
+        _;
+    }
+
+    // Constructor function, called once during deployment
+    constructor() {
+        owner = msg.sender;
+        lotteryEnded = false;
+    }
+
+    // Function to allow participants to enter the lottery
+    function enterLottery() public payable {
+        require(!lotteryEnded, "Lottery has ended");
+        require(msg.value > 0, "You need to send some ether to enter the lottery");
+
+        // Add the participant to the list
+        participants.push(msg.sender);
+
+        // Add the sent amount to the participant's balance
+        balances[msg.sender] += msg.value;
+    }
+
+    // Function to end the lottery and select a winner
+    function endLottery() public onlyOwner {
+        require(!lotteryEnded, "Lottery has already ended");
+
+        // Ensure there are participants
+        require(participants.length > 0, "No participants in the lottery");
+
+        // Mark the lottery as ended
+        lotteryEnded = true;
+
+        // Select a random winner (using a simple method for illustration purposes)
+        uint winnerIndex = uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty))) % participants.length;
+        address winner = participants[winnerIndex];
+
+        // Calculate the payout (65% of the total balance)
+        uint totalBalance = address(this).balance;
+        uint payout = (totalBalance * 65) / 100;
+
+        // Transfer the winnings to the winner
+        payable(winner).transfer(payout);
+
+        // Emit an event to log the lottery winner
+        emit LotteryWinner(winner, payout);
+    }
+
+    // Function to get the total balance of the contract
+    function getTotalBalance() public view returns (uint) {
+        return address(this).balance;
+    }
+
+    // Function to get the number of participants in the lottery
+    function getNumberOfParticipants() public view returns (uint) {
+        return participants.length;
+    }
+}
